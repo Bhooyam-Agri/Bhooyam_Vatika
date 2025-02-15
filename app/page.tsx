@@ -16,6 +16,7 @@ import { usePlantsStore } from '@/lib/plants';
 import { getPlantImageUrl } from '@/lib/image-utils';
 import { Bookmark, BookmarkCheck, Leaf, Globe2, Pill, AlertTriangle } from 'lucide-react';
 import styles from '@/styles/grid-pattern.module.css';
+import { VatikaPlantGrid } from '@/components/vatika/VatikaPlantGrid';
 
 interface PlantInsights {
   traditionalUses: string;
@@ -27,7 +28,7 @@ export default function HomePage() {
   const [showDetails, setShowDetails] = useState(false);
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [insights, setInsights] = useState<PlantInsights | null>(null);
-  const { dailyPlant, bookmarkedPlants, addBookmark, removeBookmark } = usePlantsStore();
+  const { dailyPlant, bookmarkedPlants, addBookmark, removeBookmark, plants } = usePlantsStore();
 
   const fetchPlantInsights = async (plant: any) => {
     setIsLoadingInsights(true);
@@ -354,6 +355,22 @@ export default function HomePage() {
                 index={2}
               />
             </div>
+          </ClientOnly>
+        </div>
+      </section>
+
+      <section className="py-24 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              All Medicinal Plants
+            </h2>
+            <p className="text-xl text-muted-foreground">
+              Explore our extensive collection of medicinal plants
+            </p>
+          </div>
+          <ClientOnly>
+            <VatikaPlantGrid plants={plants} />
           </ClientOnly>
         </div>
       </section>

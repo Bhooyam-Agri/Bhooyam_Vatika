@@ -85,50 +85,33 @@ export const usePlantsStore = create<PlantsStore>()(
       initialize: async () => {
         try {
           console.log('Initializing plants store...');
-          // Fetch plants from API instead of direct MongoDB connection
+          // Load plants from local data first
+          const localData = require('../data/plants.json');
+          set({ plants: localData.plants });
+
+          // Then try to fetch from API
           const response = await fetch('/api/plants');
-          if (!response.ok) {
-            throw new Error(`Failed to fetch plants: ${response.status} ${response.statusText}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (Array.isArray(data) && data.length > 0) {
+              set({ plants: data });
+            }
           }
-          const data = await response.json();
-          
-          // Check if we received an error response
-          if (data.error) {
-            throw new Error(`API Error: ${data.error} - ${data.details || ''}`);
-          }
-          
-          console.log(`Loaded ${data.length} plants from API`);;
-          
-          // If no plants are returned, throw an error
-          if (!Array.isArray(data) || data.length === 0) {
-            throw new Error('No plants found in the database. Please ensure the database is populated with plant data.');
-          }
-          
-          set({ plants: data });
 
           // Initialize daily plant if needed
           const state = get();
           const today = new Date().toDateString();
           
-          console.log('Checking daily plant rotation...', {
-            lastRotated: state.lastRotated,
-            today,
-            currentDailyPlant: state.dailyPlant
-          });
-          
           if (state.lastRotated !== today || !state.dailyPlant) {
-            const randomIndex = Math.floor(Math.random() * data.length);
-            const newDailyPlant = data[randomIndex];
-            console.log('Setting new daily plant:', newDailyPlant.name);
+            const randomIndex = Math.floor(Math.random() * state.plants.length);
             set({
-              dailyPlant: newDailyPlant,
+              dailyPlant: state.plants[randomIndex],
               lastRotated: today
             });
           }
         } catch (error) {
           console.error('Failed to initialize plants:', error);
-          // Re-throw the error to handle it in the component
-          throw error;
+          // Don't throw error, use local data as fallback
         }
       },
       initializePlants: async () => {

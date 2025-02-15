@@ -17,6 +17,7 @@ import { PlantImagePlaceholder } from '@/components/ui/plant-image-placeholder';
 import { RecipeQuestionnaire } from '@/components/recipe-questionnaire';
 import { getPlantImageUrl, preloadAllPlantImages } from '@/lib/image-utils';
 import { Command, CommandInput, CommandList, CommandGroup, CommandItem } from '@/components/ui/command';
+import { VatikaPlantGrid } from '@/components/vatika/VatikaPlantGrid';
 
 export default function VatikaPage() {
   const router = useRouter();
@@ -268,97 +269,16 @@ export default function VatikaPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="regions" className="space-y-4">
-            <Command className="rounded-lg border shadow-md">
-              <CommandInput 
-                placeholder="Search plants by region, name, or properties..." 
-                value={regionSearchQuery}
-                onValueChange={setRegionSearchQuery}
-              />
-              <CommandList className="max-h-[500px]">
-                {Object.keys(filteredRegionGroups).length === 0 ? (
-                  <div className="py-6 text-center text-sm text-muted-foreground">
-                    No plants found. Try searching with different terms.
-                  </div>
-                ) : (
-                  Object.entries(filteredRegionGroups).map(([region, regionPlants]) => (
-                    <CommandGroup key={region} heading={`${region} (${regionPlants.length} plants)`}>
-                      {regionPlants.map((plant) => (
-                        <CommandItem
-                          key={plant.id}
-                          onSelect={() => handlePlantClick(plant.id)}
-                          className="flex items-center gap-2 cursor-pointer p-2"
-                        >
-                          <img 
-                            src={getPlantImageUrl(plant)} 
-                            alt={plant.name} 
-                            className="w-10 h-10 rounded-full object-cover"
-                            loading="lazy"
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="font-medium">{plant.name}</div>
-                                <div className="text-sm text-muted-foreground">{plant.scientificName}</div>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleBookmark(plant.id);
-                                }}
-                              >
-                                {bookmarkedPlants.includes(plant.id) ? (
-                                  <BookmarkCheck className="h-4 w-4" />
-                                ) : (
-                                  <Bookmark className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
-                            <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                              {plant.description}
-                            </div>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  ))
-                )}
-              </CommandList>
-            </Command>
+          <TabsContent value="regions">
+            {!isLoading && !error && (
+              <VatikaPlantGrid plants={plants} view="regions" />
+            )}
           </TabsContent>
 
-          <TabsContent value="conditions" className="space-y-4">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Object.entries(conditionGroups).map(([condition, conditionPlants]) => (
-                <Card 
-                  key={condition} 
-                  className="hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => router.push(`/vatika/browse?condition=${encodeURIComponent(condition)}`)}
-                >
-                  <CardHeader>
-                    <CardTitle>{condition}</CardTitle>
-                    <CardDescription>
-                      {conditionPlants.length} plant{conditionPlants.length !== 1 ? 's' : ''} for this condition
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex -space-x-4">
-                      {conditionPlants.slice(0, 4).map(plant => (
-                        <img 
-                          key={plant.id}
-                          src={getPlantImageUrl(plant)} 
-                          alt={plant.name}
-                          className="w-10 h-10 rounded-full border-2 border-background"
-                          loading="lazy"
-                        />
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+          <TabsContent value="conditions">
+            {!isLoading && !error && (
+              <VatikaPlantGrid plants={plants} view="conditions" />
+            )}
           </TabsContent>
         </Tabs>
 

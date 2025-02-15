@@ -1,161 +1,313 @@
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { useState, useRef, useEffect } from 'react';
+import { Plant } from '@/lib/plants';
+import { VatikaPlantCard } from './VatikaPlantCard';
+import { VatikaRegionSelector } from './VatikaRegionSelector';
 import { Button } from '@/components/ui/button';
-import { Bookmark, BookmarkCheck, ExternalLink, Info } from 'lucide-react';
-import { usePlantsStore } from '@/lib/plants';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { cn } from '@/lib/utils';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { getPlantImageUrl } from '@/lib/image-utils';
-import { motion } from 'framer-motion';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
-};
+interface VatikaPlantGridProps {
+  plants: Plant[];
+  view: 'regions' | 'conditions';
+}
 
-const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 }
-};
-
-export function VatikaPlantGrid() {
-  const { plants, bookmarkedPlants, addBookmark, removeBookmark } = usePlantsStore();
+export function VatikaPlantGrid({ plants, view }: VatikaPlantGridProps) {
   const router = useRouter();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [selectedRegion, setSelectedRegion] = useState('all');
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [showLeftGradient, setShowLeftGradient] = useState(false);
+  const [showRightGradient, setShowRightGradient] = useState(true);
 
-  const handleBookmark = (e: React.MouseEvent, plantId: string) => {
-    e.stopPropagation();
-    if (bookmarkedPlants.includes(plantId)) {
-      removeBookmark(plantId);
-    } else {
-      addBookmark(plantId);
+  const conditionGroups = plants.reduce((groups, plant) => {
+    plant.conditions.forEach(condition => {
+      if (!groups[condition]) {
+        groups[condition] = [];
+      }
+      groups[condition].push(plant);
+    });
+    return groups;
+  }, {} as Record<string, typeof plants>);
+
+  const filteredPlants = plants.filter((plant) => 
+    selectedRegion === 'all' || 
+    plant.regions.some(region => region.toLowerCase() === selectedRegion.toLowerCase())
+  );
+
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      setShowLeftGradient(scrollLeft > 0);
+      setShowRightGradient(scrollLeft < scrollWidth - clientWidth - 10);
     }
   };
 
-  return (
-    <div className="py-16 px-4 sm:px-6 lg:px-8">
-      <motion.div
-        initial="hidden"
-        whileInView="show"
-        viewport={{ once: true }}
-        variants={container}
-        className="max-w-7xl mx-auto"
-      >
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Medicinal Plants</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Explore our comprehensive collection of medicinal plants, each with detailed information about their properties and uses.
-          </p>
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll);
+      handleScroll(); // Check initial state
+    }
+    return () => {
+      if (scrollContainer) {
+        scrollContainer.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [filteredPlants]);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    setIsDragging(true);
+    setStartX(e.pageX - scrollContainerRef.current!.offsetLeft);
+    setScrollLeft(scrollContainerRef.current!.scrollLeft);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const x = e.pageX - scrollContainerRef.current!.offsetLeft;
+    const walk = (x - startX) * 2;
+    scrollContainerRef.current!.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    setIsDragging(true);
+    setStartX(e.touches[0].pageX - scrollContainerRef.current!.offsetLeft);
+    setScrollLeft(scrollContainerRef.current!.scrollLeft);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    const x = e.touches[0].pageX - scrollContainerRef.current!.offsetLeft;
+    const walk = (x - startX) * 2;
+    scrollContainerRef.current!.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleSlide = (direction: 'left' | 'right') => {
+    if (!scrollContainerRef.current) return;
+    
+    const scrollAmount = direction === 'left' ? -300 : 300;
+    scrollContainerRef.current.scrollBy({
+      left: scrollAmount,
+      behavior: 'smooth'
+    });
+  };
+
+  const handleViewAll = () => {
+    router.push(`/vatika/region/${selectedRegion}`);
+  };
+
+  if (view === 'regions') {
+    return (
+      <div className="space-y-6">
+        <div className="w-full sm:w-64 mx-auto">
+          <VatikaRegionSelector 
+            plants={plants}
+            onRegionChange={setSelectedRegion} 
+          />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {plants.map((plant) => (
-            <motion.div key={plant.id} variants={item}>
-              <Card 
-                className="group hover:shadow-xl transition-all duration-300 cursor-pointer
-                         border border-transparent hover:border-primary/20 overflow-hidden"
-                onClick={() => router.push(`/plant-library/${plant.id}`)}
-              >
-                <div className="relative aspect-square overflow-hidden">
-                  <Image
-                    src={getPlantImageUrl(plant)}
-                    alt={plant.name}
-                    fill
-                    className="object-cover transform group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  
-                  <div className="absolute top-2 right-2 flex gap-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="bg-white/90 hover:bg-white shadow-lg"
-                            onClick={(e) => handleBookmark(e, plant.id)}
-                          >
-                            {bookmarkedPlants.includes(plant.id) ? (
-                              <BookmarkCheck className="h-5 w-5 text-primary" />
-                            ) : (
-                              <Bookmark className="h-5 w-5" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{bookmarkedPlants.includes(plant.id) ? 'Remove from bookmarks' : 'Add to bookmarks'}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+        <div className="relative">
+          {/* Gradient Overlays */}
+          <div className={cn(
+            "absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none transition-opacity duration-200",
+            showLeftGradient ? "opacity-100" : "opacity-0"
+          )} />
+          <div className={cn(
+            "absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none transition-opacity duration-200",
+            showRightGradient ? "opacity-100" : "opacity-0"
+          )} />
 
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="bg-white/90 hover:bg-white shadow-lg"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(`/plant-library/${plant.id}`, '_blank');
-                            }}
-                          >
-                            <ExternalLink className="h-5 w-5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Open in new tab</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+          {/* Slider Controls */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleSlide('left')}
+            className="absolute -left-4 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
+            disabled={!showLeftGradient}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleSlide('right')}
+            className="absolute -right-4 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
+            disabled={!showRightGradient}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+
+          {/* Scrollable Plants Container */}
+          <div
+            ref={scrollContainerRef}
+            className={cn(
+              "overflow-x-auto scrollbar-hide",
+              isDragging ? "cursor-grabbing" : "cursor-grab"
+            )}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onMouseMove={handleMouseMove}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="flex gap-6 px-6 min-w-max">
+              {filteredPlants.map((plant) => (
+                <div key={plant.id} className="w-[300px] flex-shrink-0">
+                  <VatikaPlantCard plant={plant} />
                 </div>
-
-                <CardHeader>
-                  <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                    {plant.name}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground italic">
-                    {plant.scientificName}
-                  </p>
-                </CardHeader>
-
-                <CardContent>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-4 group-hover:text-foreground transition-colors">
-                    {plant.description}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {plant.uses.slice(0, 3).map((use, index) => (
-                      <span
-                        key={index}
-                        className="px-2 py-1 bg-primary/10 rounded-full text-xs
-                                 group-hover:bg-primary/20 transition-colors"
-                      >
-                        {use}
-                      </span>
-                    ))}
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="w-full group-hover:bg-primary/10 transition-colors"
-                  >
-                    Learn More
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+              ))}
+            </div>
+          </div>
         </div>
-      </motion.div>
+
+        {/* View All Button */}
+        <div className="text-center mt-8">
+          <Button 
+            onClick={handleViewAll}
+            className="px-8"
+          >
+            View All {selectedRegion !== 'all' ? selectedRegion : ''} Plants
+            {filteredPlants.length > 0 && ` (${filteredPlants.length})`}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="relative">
+        {/* Gradient Overlays */}
+        <div className={cn(
+          "absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none transition-opacity duration-200",
+          showLeftGradient ? "opacity-100" : "opacity-0"
+        )} />
+        <div className={cn(
+          "absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none transition-opacity duration-200",
+          showRightGradient ? "opacity-100" : "opacity-0"
+        )} />
+
+        {/* Slider Controls */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => handleSlide('left')}
+          className="absolute -left-4 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
+          disabled={!showLeftGradient}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => handleSlide('right')}
+          className="absolute -right-4 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
+          disabled={!showRightGradient}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+
+        {/* Scrollable Conditions Container */}
+        <div
+          ref={scrollContainerRef}
+          className={cn(
+            "overflow-x-auto scrollbar-hide",
+            isDragging ? "cursor-grabbing" : "cursor-grab"
+          )}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onMouseMove={handleMouseMove}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="flex gap-6 px-6 min-w-max">
+            {Object.entries(conditionGroups).map(([condition, conditionPlants]) => (
+              <div key={condition} className="w-[300px] flex-shrink-0">
+                <Card 
+                  className="h-full hover:shadow-lg transition-shadow cursor-pointer group"
+                  onClick={() => router.push(`/vatika/browse?condition=${encodeURIComponent(condition)}`)}
+                >
+                  <CardHeader>
+                    <CardTitle className="group-hover:text-primary transition-colors">
+                      {condition}
+                    </CardTitle>
+                    <CardDescription>
+                      {conditionPlants.length} plant{conditionPlants.length !== 1 ? 's' : ''} for this condition
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex -space-x-4 mb-4">
+                      {conditionPlants.slice(0, 4).map(plant => (
+                        <div 
+                          key={plant.id} 
+                          className="w-12 h-12 rounded-full border-2 border-background overflow-hidden"
+                        >
+                          <img 
+                            src={getPlantImageUrl(plant)} 
+                            alt={plant.name}
+                            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                        </div>
+                      ))}
+                      {conditionPlants.length > 4 && (
+                        <div className="w-12 h-12 rounded-full border-2 border-background bg-primary/10 flex items-center justify-center text-sm font-medium">
+                          +{conditionPlants.length - 4}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {conditionPlants.slice(0, 2).map(plant => (
+                        <span 
+                          key={plant.id}
+                          className="text-xs text-muted-foreground"
+                        >
+                          {plant.name}
+                        </span>
+                      ))}
+                      {conditionPlants.length > 2 && (
+                        <span className="text-xs text-muted-foreground">
+                          and {conditionPlants.length - 2} more...
+                        </span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* View All Conditions Button */}
+      <div className="text-center mt-8">
+        <Button 
+          onClick={() => router.push('/vatika/conditions')}
+          className="px-8"
+        >
+          View All Conditions ({Object.keys(conditionGroups).length})
+        </Button>
+      </div>
     </div>
   );
 } 
