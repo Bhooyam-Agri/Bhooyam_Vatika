@@ -1,0 +1,7 @@
+.gridPattern {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgb(var(--foreground) / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(var(--foreground) / 0.05) 1px, transparent 1px);
+  mask-image: radial-gradient(ellipse at center, transparent 20%, black 80%);
+}

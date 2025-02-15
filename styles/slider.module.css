@@ -1,0 +1,23 @@
+
+.sliderContainer {
+  position: relative;
+  z-index: 1; /* Ensure the slider container has a z-index context */
+}
+
+.sliderControls {
+  position: relative;
+  z-index: 2; /* Make controls appear above the slides */
+  pointer-events: auto; /* Ensure clicks are registered */
+}
+
+.sliderButton {
+  position: relative;
+  z-index: 3; /* Higher z-index than surrounding elements */
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.slideContent {
+  position: relative;
+  z-index: 1;
+}

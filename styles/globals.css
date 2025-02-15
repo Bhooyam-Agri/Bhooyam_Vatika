@@ -1,0 +1,27 @@
+.floating-gradient {
+  background: radial-gradient(circle at center, var(--primary) 0%, transparent 70%);
+  opacity: 0.1;
+  filter: blur(64px);
+}
+
+.card-slider {
+  mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
+}
+
+@layer utilities {
+  .gradient-page {
+    @apply bg-gradient-to-b from-background via-background/95 to-background/90;
+  }
+
+  .gradient-section {
+    @apply bg-gradient-to-t from-secondary/30 to-transparent;
+  }
+
+  .gradient-dark {
+    @apply dark:bg-gradient-to-b dark:from-background/50 dark:via-background/25 dark:to-background/10;
+  }
+
+  .gradient-hero {
+    @apply bg-gradient-to-b from-primary/20 via-background/95 to-background/90;
+  }
+}
