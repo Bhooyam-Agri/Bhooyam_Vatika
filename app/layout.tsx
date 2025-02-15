@@ -1,7 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { CustomCursor } from '@/components/ui/custom-cursor';
 import { GlowEffectProvider } from '@/components/ui/glow-effect-provider';
@@ -24,5 +23,11 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <RootLayoutClient>{children}</RootLayoutClient>;
+  return (
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body>
+        {children}
+      </body>
+    </html>
+  );
 }

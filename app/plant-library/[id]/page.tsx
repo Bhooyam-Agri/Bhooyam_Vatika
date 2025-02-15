@@ -20,9 +20,8 @@ export default function PlantPage() {
   const { plants, bookmarkedPlants, addBookmark, removeBookmark } = usePlantsStore();
   const { getRecipesByPlant } = useRecipesStore();
   const { toast } = useToast();
-  const { loading, error, askAboutPlant } = usePlantAI();
+  const { isLoading: isAiLoading, response: aiResponse, askAboutPlant } = usePlantAI();
   const [query, setQuery] = useState('');
-  const [aiResponse, setAiResponse] = useState('');
 
   const plant = plants.find(p => p.id === params.id) as Plant;
   const recipes = plant ? getRecipesByPlant(plant.id) : [];
@@ -46,9 +45,7 @@ export default function PlantPage() {
 
   const handleAskAI = async () => {
     if (!query.trim()) return;
-
-    const response = await askAboutPlant(plant, query);
-    setAiResponse(response);
+    await askAboutPlant(plant.name, plant.scientificName, query);
     setQuery('');
   };
 
@@ -188,16 +185,10 @@ export default function PlantPage() {
                       }
                     }}
                   />
-                  <Button onClick={handleAskAI} disabled={loading}>
-                    {loading ? 'Thinking...' : 'Ask'}
+                  <Button onClick={handleAskAI} disabled={isAiLoading}>
+                    {isAiLoading ? 'Thinking...' : 'Ask'}
                   </Button>
                 </div>
-
-                {error && (
-                  <div className="p-4 bg-destructive/10 text-destructive rounded-lg">
-                    {error}
-                  </div>
-                )}
 
                 {aiResponse && (
                   <div className="p-4 bg-muted rounded-lg">

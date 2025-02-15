@@ -1,125 +1,120 @@
 import { useState } from 'react';
-import { toast } from '@/hooks/use-toast';
-import { Plant } from '@/lib/plants';
+import { useToast } from '@/hooks/use-toast';
 
-interface PlantAIProps {
-  plantName?: string;
-  scientificName?: string;
+interface PlantAIResponse {
+  data?: string;
+  error?: string;
+  details?: string;
 }
 
-interface UsePlantAIReturn {
-  loading: boolean;
-  error: string | null;
-  answer: string | null;
-  askQuestion: (question: string, plant?: Plant) => Promise<void>;
-  getInsights: (plant?: Plant) => Promise<void>;
-  askAboutPlant: (plant: Plant, query: string) => Promise<string>;
+interface PlantAIRequest {
+  plantName: string;
+  scientificName: string;
+  question: string;
 }
 
-export function usePlantAI(props?: PlantAIProps): UsePlantAIReturn {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [answer, setAnswer] = useState<string | null>(null);
+interface ConditionAIRequest {
+  question: string;
+  context: {
+    condition: string;
+    plants: {
+      name: string;
+      scientificName: string;
+      uses: string[];
+      conditions: string[];
+    }[];
+  };
+}
 
-  const makeRequest = async (
-    question?: string, 
-    type: 'qa' | 'insights' = 'qa',
-    plantName?: string,
-    scientificName?: string
-  ) => {
+export function usePlantAI() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [response, setResponse] = useState<string>('');
+  const { toast } = useToast();
+
+  const makeRequest = async (requestData: PlantAIRequest | ConditionAIRequest) => {
     try {
-      setLoading(true);
-      setError(null);
-
-      if (!plantName || !scientificName) {
-        throw new Error('Plant name and scientific name are required');
-      }
-
-      console.log('Making request with:', { plantName, scientificName, question, type });
-
       const response = await fetch('/api/plant-qa', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          plantName,
-          scientificName,
-          question,
-          type: type === 'insights' ? 'insights' : undefined,
-        }),
+        body: JSON.stringify(requestData),
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get AI response');
+      }
+
+      const data: PlantAIResponse = await response.json();
       
-      if (!response.ok || data.error) {
-        const errorMessage = data.error || data.details || 'Failed to get response';
-        throw new Error(errorMessage);
+      if (data.error) {
+        throw new Error(data.error);
       }
 
-      if (!data.data && data.data !== '') {
-        throw new Error('Invalid response format');
-      }
-
-      setAnswer(data.data);
       return data.data;
-    } catch (err: any) {
-      console.error('Plant AI Request Error:', err);
-      const errorMessage = err.message || 'Failed to get AI response';
-      setError(errorMessage);
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
-      });
-      return '';
-    } finally {
-      setLoading(false);
+    } catch (error: any) {
+      console.error('Plant AI Request Error:', error);
+      throw new Error(error.message || 'Failed to process request');
     }
   };
 
-  const askQuestion = async (question: string, plant?: Plant) => {
-    if (!question.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a question",
-        variant: "destructive"
-      });
-      return;
-    }
-    await makeRequest(
-      question, 
-      'qa',
-      plant?.name || props?.plantName,
-      plant?.scientificName || props?.scientificName
-    );
-  };
-
-  const getInsights = async (plant?: Plant) => {
-    await makeRequest(
-      undefined, 
-      'insights',
-      plant?.name || props?.plantName,
-      plant?.scientificName || props?.scientificName
-    );
-  };
-
-  // Maintain backward compatibility
-  const askAboutPlant = async (plant: Plant, query: string): Promise<string> => {
+  const askAboutPlant = async (plantName: string, scientificName: string, question: string) => {
+    setIsLoading(true);
     try {
-      const result = await makeRequest(query, 'qa', plant.name, plant.scientificName);
-      return result || '';
-    } catch (err) {
-      return '';
+      const data = await makeRequest({
+        plantName,
+        scientificName,
+        question
+      });
+
+      if (data) {
+        setResponse(data);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to get AI response. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const askAboutCondition = async (
+    condition: string,
+    plants: { name: string; scientificName: string; uses: string[]; conditions: string[] }[],
+    question: string
+  ) => {
+    setIsLoading(true);
+    try {
+      const data = await makeRequest({
+        question,
+        context: {
+          condition,
+          plants
+        }
+      });
+
+      if (data) {
+        setResponse(data);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to get AI response. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return {
-    loading,
-    error,
-    answer,
-    askQuestion,
-    getInsights,
+    isLoading,
+    response,
     askAboutPlant,
+    askAboutCondition
   };
 }

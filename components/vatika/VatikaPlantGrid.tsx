@@ -245,7 +245,7 @@ export function VatikaPlantGrid({ plants, view }: VatikaPlantGridProps) {
               <div key={condition} className="w-[300px] flex-shrink-0">
                 <Card 
                   className="h-full hover:shadow-lg transition-shadow cursor-pointer group"
-                  onClick={() => router.push(`/vatika/browse?condition=${encodeURIComponent(condition)}`)}
+                  onClick={() => router.push(`/vatika/condition/${encodeURIComponent(condition)}`)}
                 >
                   <CardHeader>
                     <CardTitle className="group-hover:text-primary transition-colors">
